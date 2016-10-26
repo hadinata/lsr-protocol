@@ -15,6 +15,9 @@ node_id = sys.argv[1]
 node_port = int(sys.argv[2])
 config_filename = sys.argv[3];
 
+# network topology graph
+graph = {}
+
 # open config file and break it up line by line
 f = open(config_filename)
 filestring = f.read()
@@ -56,6 +59,12 @@ def createLinkStateHeader():
     header = h_num_neighbours + h_info
     return header
 
+# updates network graph based on received link state packet
+def handleLinkStatePacket(message):
+    nodes = message.split(",")
+    for i in range(1, len(nodes)):
+        print nodes[i]
+
 # floods neighbours with broadcast of current neighbour information
 def flood():
     # threading to repeat flooding every interval
@@ -78,6 +87,4 @@ while 1:
     message, fromAddress = udpSocket.recvfrom(2048)
     fromIP, fromPort = fromAddress
     print "RECV ====> [" + message + "] from port " + str(fromPort)
-    nodes = message.split(",")
-    for i in range(1, len(nodes)):
-        print nodes[i]
+    handleLinkStatePacket(message)
