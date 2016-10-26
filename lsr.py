@@ -15,7 +15,8 @@ node_id = sys.argv[1]
 node_port = int(sys.argv[2])
 config_filename = sys.argv[3];
 
-# network topology graph
+# network topology graph represented as a 2d dict: graph[node][connecting node]
+# storing a tuple (cost, port number)
 graph = {}
 
 # open config file and break it up line by line
@@ -50,20 +51,31 @@ for i in range(1,int(num_neighbours)+1):
 udpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 udpSocket.bind(('', node_port))
 
-# create default header based on current state
-def createLinkStateHeader():
-    h_num_neighbours = str(num_neighbours) #str(num_neighbours).zfill(NUM_NEIGHBOURS_BYTES)
+# create link state packet based on current state
+def createLSP():
+    #h_num_neighbours = str(num_neighbours) #str(num_neighbours).zfill(NUM_NEIGHBOURS_BYTES)
+    h_node_id = str(node_id)
     h_info = ""
     for i in range(0,len(neighbours)):
-        h_info += "," + str(cost[neighbours[i]]) + " " + str(port_number[neighbours[i]])
-    header = h_num_neighbours + h_info
+        h_info += "," + neighbours[i] + " " + str(cost[neighbours[i]]) + " " + str(port_number[neighbours[i]])
+    header = h_node_id + h_info
     return header
 
 # updates network graph based on received link state packet
-def handleLinkStatePacket(message):
+def updateGraph(message):
     nodes = message.split(",")
+    from_node = nodes[0]
     for i in range(1, len(nodes)):
-        print nodes[i]
+        to_node_props = nodes[i].split(" ")
+        tn_id = to_node_props[0]            # connecting node id
+        tn_cost = int(to_node_props[1])     # connecting node cost
+        tn_port = int(to_node_props[2])     # connecting node port
+        if graph.has_key(from_node):        # if from_node already defined as a key
+            graph[from_node][tn_id] = (tn_cost, tn_port)        # update key value
+        else:
+            graph[from_node] = { tn_id: (tn_cost, tn_port) }    # initialise key value
+        print graph
+
 
 # floods neighbours with broadcast of current neighbour information
 def flood():
@@ -72,9 +84,9 @@ def flood():
     threading.Timer(FLOODING_INTERVAL, flood).start()
 
     # message to send over socket
-    message = createLinkStateHeader()
+    message = createLSP()
 
-    # send message to all neighbour nodes
+    # send this node's link state packet to all neighbour nodes
     for i in range(0,len(neighbours)-1):
         neighbour_node = neighbours[i]
         udpSocket.sendto(message,('localhost', int(port_number[neighbour_node])))
@@ -87,4 +99,12 @@ while 1:
     message, fromAddress = udpSocket.recvfrom(2048)
     fromIP, fromPort = fromAddress
     print "RECV ====> [" + message + "] from port " + str(fromPort)
-    handleLinkStatePacket(message)
+    updateGraph(message)
+    # pass message on to all neighbour nodes
+    for i in range(0,len(neighbours)-1):
+        neighbour_node = neighbours[i]
+        if int(port_number[neighbour_node]) == fromPort:
+            continue
+        else:
+            udpSocket.sendto(message,('localhost', int(port_number[neighbour_node])))
+            print "SENT ===>     [" + message + "] to " + neighbour_node + " at port " + port_number[neighbour_node] + ""
