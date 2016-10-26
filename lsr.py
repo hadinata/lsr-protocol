@@ -8,7 +8,7 @@ import threading
 import time
 
 # constants
-FLOODING_INTERVAL = 1.0
+FLOODING_INTERVAL = 1.0     # one second
 
 # input arguments
 node_id = sys.argv[1]
@@ -43,23 +43,22 @@ for i in range(1,int(num_neighbours)+1):
     port_number[node] = line_elements[2]
 
 
-
 # Declare socket
 udpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
+udpSocket.bind(('', node_port))
 
 # create default header based on current state
 def createLinkStateHeader():
     h_num_neighbours = str(num_neighbours) #str(num_neighbours).zfill(NUM_NEIGHBOURS_BYTES)
     h_info = ""
     for i in range(0,len(neighbours)):
-        h_info += str(" ") + str(cost[neighbours[i]]) + str(" ") + str(port_number[neighbours[i]])
+        h_info += "," + str(cost[neighbours[i]]) + " " + str(port_number[neighbours[i]])
     header = h_num_neighbours + h_info
     return header
 
 # floods neighbours with broadcast of current neighbour information
 def flood():
-    # threading to repeat every flooding interval
+    # threading to repeat flooding every interval
     # code adopted from http://stackoverflow.com/questions/3393612/run-certain-code-every-n-seconds
     threading.Timer(FLOODING_INTERVAL, flood).start()
 
@@ -69,7 +68,16 @@ def flood():
     # send message to all neighbour nodes
     for i in range(0,len(neighbours)-1):
         neighbour_node = neighbours[i]
-        udpSocket.sendto(message,("localhost", int(port_number[neighbour_node])))
-        # print "SENT ===>     [ " + message + " ] to " + neighbour_node;
+        udpSocket.sendto(message,('localhost', int(port_number[neighbour_node])))
+        print "SENT ===>     [" + message + "] to " + neighbour_node + " at port " + port_number[neighbour_node] + ""
 
 flood()
+
+# infinite loop, listens in to receive packets
+while 1:
+    message, fromAddress = udpSocket.recvfrom(2048)
+    fromIP, fromPort = fromAddress
+    print "RECV ====> [" + message + "] from port " + str(fromPort)
+    nodes = message.split(",")
+    for i in range(1, len(nodes)):
+        print nodes[i]
