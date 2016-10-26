@@ -1,5 +1,3 @@
-# characters separated by spaces connected, cost
-
 # lsr.py
 # COMP3331 2016 S2 Assignment 2
 # By Clinton Hadinata, October 2016
@@ -17,19 +15,11 @@ node_id = sys.argv[1]
 node_port = int(sys.argv[2])
 config_filename = sys.argv[3];
 
-# open file and break it up into segments
+# open config file and break it up line by line
 f = open(config_filename)
 filestring = f.read()
 config_lines = filestring.split("\n")
 f.close()
-
-print node_id
-print node_port
-print config_lines
-
-num_neighbours = config_lines[0]
-
-print num_neighbours
 
 # list containing all the current node's neighbouring nodes
 neighbours = []
@@ -40,6 +30,10 @@ cost = {}
 # hash storing the port number of a node
 port_number = {}
 
+# number of neighbour nodes is the first line of the config file
+num_neighbours = config_lines[0]
+
+# extract values about neighbouring nodes from config file
 for i in range(1,int(num_neighbours)+1):
     line = config_lines[i]
     line_elements = line.split(" ")
@@ -47,9 +41,12 @@ for i in range(1,int(num_neighbours)+1):
     neighbours.append(node)
     cost[node] = line_elements[1]
     port_number[node] = line_elements[2]
-    print node
-    print cost[node]
-    print port_number[node]
+
+
+
+# Declare socket
+udpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
 
 # create default header based on current state
 def createLinkStateHeader():
@@ -60,13 +57,11 @@ def createLinkStateHeader():
     header = h_num_neighbours + h_info
     return header
 
+# floods neighbours with broadcast of current neighbour information
 def flood():
     # threading to repeat every flooding interval
     # code adopted from http://stackoverflow.com/questions/3393612/run-certain-code-every-n-seconds
     threading.Timer(FLOODING_INTERVAL, flood).start()
-
-    # Declare socket
-    udpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     # message to send over socket
     message = createLinkStateHeader()
