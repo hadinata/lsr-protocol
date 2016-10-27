@@ -270,6 +270,15 @@ def dijkstra():
 
 dijkstra()
 
+def getNodeID(message):
+    two_parts = message.split("|")
+    left_nodes = two_parts[0]
+    right_deleted = two_parts[1]
+
+    nodes = left_nodes.split(",")
+    from_node = nodes[0]
+    return from_node
+
 # infinite loop, listens in to receive packets
 while 1:
     message, fromAddress = udpSocket.recvfrom(2048)
@@ -289,11 +298,13 @@ while 1:
             hbCount[from_node] = hbBroadcasts
     else:
         updateGraph(message)
-        # pass message on to all neighbour nodes
-        for i in range(0,len(neighbours)):
-            neighbour_node = neighbours[i]
-            if int(port_number[neighbour_node]) == fromPort:
-                continue
-            else:
-                udpSocket.sendto(message,('localhost', int(port_number[neighbour_node])))
-                #print "SENT ===>     [" + message + "] to " + neighbour_node + " at port " + port_number[neighbour_node] + ""
+        # only pass on LSP to neighbours if the LSP itself did not originate from a neighbour
+        if (getNodeID(message) not in neighbours):
+            # pass message on to all neighbour nodes
+            for i in range(0,len(neighbours)):
+                neighbour_node = neighbours[i]
+                if int(port_number[neighbour_node]) == fromPort:    # dont send LSP back to sender
+                    continue
+                else:
+                    udpSocket.sendto(message,('localhost', int(port_number[neighbour_node])))
+                    #print "SENT ===>     [" + message + "] to " + neighbour_node + " at port " + port_number[neighbour_node] + ""
