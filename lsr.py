@@ -279,6 +279,22 @@ def getNodeID(message):
     from_node = nodes[0]
     return from_node
 
+def getNodeNeighbours(message):
+    neighbours_to_return = []
+
+    two_parts = message.split("|")
+    left_nodes = two_parts[0]
+    right_deleted = two_parts[1]
+
+    nodes = left_nodes.split(",")
+    from_node = nodes[0]
+    for i in range(1, len(nodes)):
+        to_node_props = nodes[i].split(" ")
+        tn_id = to_node_props[0]            # connecting node id
+        neighbours_to_return.append(tn_id)
+
+    return neighbours_to_return
+
 # infinite loop, listens in to receive packets
 while 1:
     message, fromAddress = udpSocket.recvfrom(2048)
@@ -298,13 +314,12 @@ while 1:
             hbCount[from_node] = hbBroadcasts
     else:
         updateGraph(message)
-        # only pass on LSP to neighbours if the LSP itself did not originate from a neighbour
-        if (getNodeID(message) not in neighbours):
-            # pass message on to all neighbour nodes
-            for i in range(0,len(neighbours)):
-                neighbour_node = neighbours[i]
-                if int(port_number[neighbour_node]) == fromPort:    # dont send LSP back to sender
-                    continue
-                else:
-                    udpSocket.sendto(message,('localhost', int(port_number[neighbour_node])))
-                    #print "SENT ===>     [" + message + "] to " + neighbour_node + " at port " + port_number[neighbour_node] + ""
+        # pass message on to all neighbour nodes
+        for i in range(0,len(neighbours)):
+            neighbour_node = neighbours[i]
+            # dont send LSP back to sender or if the node is a neighbour of the node the LSP originated from
+            if (int(port_number[neighbour_node]) == fromPort or neighbour_node in getNodeNeighbours(message)):
+                continue
+            else:
+                udpSocket.sendto(message,('localhost', int(port_number[neighbour_node])))
+                #print "SENT ===>     [" + message + "] to " + neighbour_node + " at port " + port_number[neighbour_node] + ""
