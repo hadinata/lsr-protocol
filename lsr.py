@@ -8,8 +8,8 @@ import threading
 import time
 
 # constants
-UPDATE_INTERVAL = 10.0     # one second
-ROUTE_UPDATE_INTERVAL = 5.0
+UPDATE_INTERVAL = 1.0     # one second
+ROUTE_UPDATE_INTERVAL = 30.0
 
 # input arguments
 node_id = sys.argv[1]
@@ -97,10 +97,10 @@ def flood():
     message = createLSP()
 
     # send this node's link state packet to all neighbour nodes
-    for i in range(0,len(neighbours)-1):
+    for i in range(0,len(neighbours)):
         neighbour_node = neighbours[i]
         udpSocket.sendto(message,('localhost', int(port_number[neighbour_node])))
-        print "BROADCAST ===>     [" + message + "] to " + neighbour_node + " at port " + port_number[neighbour_node] + ""
+        # print "BROADCAST ===>     [" + message + "] to " + neighbour_node + " at port " + port_number[neighbour_node] + ""
 
 flood()
 
@@ -146,41 +146,41 @@ def dijkstra():
             D[v] = float("inf")     # simulating infinity
             prev[v] = ""
 
-    print "After initialisation: "
-    printprint(D, N_dash, prev)
+    # print "After initialisation: "
+    # printprint(D, N_dash, prev)
 
     # Loop
-    print len(N_dash)
-    print len(graph.keys())
+    # print len(N_dash)
+    # print len(graph.keys())
     while len(N_dash) < len(graph.keys()):
         #w = min(D, key=D.get)
         # print "D IS: "
         # print D
         w = minimumCost(D, N_dash)
-        print "MINIMUM IS: " + w
+        # print "MINIMUM IS: " + w
         N_dash.add(w)
-        printprint(D, N_dash, prev)
+        # printprint(D, N_dash, prev)
         # update D(v) for each neighbor v of w and not in N
         for v in graph[w].keys():
             if (v == node_id):
                 continue
-            print "Updating D at " + v
+            # print "Updating D at " + v
             if (v not in N_dash):
                 cost = graph[w][v]
                 if (D[w] + cost < D[v]):
                     D[v] = D[w] + cost
                     prev[v] = w
-            printprint(D, N_dash, prev)
+            # printprint(D, N_dash, prev)
 
-    print "GRAPH KEYS  "
-    print graph.keys()
-    print "N_DASHHH  "
-    print N_dash
+    # print "GRAPH KEYS  "
+    # print graph.keys()
+    # print "N_DASHHH  "
+    # print N_dash
 
     # print least cost route
     for node in graph.keys():
-        print "\nAT NODE: " + node
-        print "PREV: " + prev[node]
+        # print "\nAT NODE: " + node
+        # print "PREV: " + prev[node]
         if node == node_id:
             continue
         else:
@@ -192,8 +192,8 @@ def dijkstra():
                 cost = graph[nextback][current]
                 total_cost += cost
                 route += nextback
-                print "ROUTE: " + route
-                print "TOTCOST: " + str(total_cost)
+                # print "ROUTE: " + route
+                # print "TOTCOST: " + str(total_cost)
                 current = nextback
                 nextback = prev[nextback]
             cost = graph[node_id][current]
@@ -201,6 +201,7 @@ def dijkstra():
             route += node_id
             route = ''.join(reversed(route))
             print "least-cost path to node " + node + ": " + route + " and the cost is " + str(total_cost)
+    print "\n"
 
 dijkstra()
 
@@ -211,7 +212,7 @@ while 1:
     #print "RECV ====> [" + message + "] from port " + str(fromPort)
     updateGraph(message)
     # pass message on to all neighbour nodes
-    for i in range(0,len(neighbours)-1):
+    for i in range(0,len(neighbours)):
         neighbour_node = neighbours[i]
         if int(port_number[neighbour_node]) == fromPort:
             continue
