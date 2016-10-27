@@ -2,6 +2,7 @@
 # COMP3331 2016 S2 Assignment 2
 # By Clinton Hadinata, October 2016
 
+import re
 import socket
 import sys
 import threading
@@ -47,8 +48,13 @@ for i in range(1,int(num_neighbours)+1):
     cost[node] = float(line_elements[1])
     port_number[node] = line_elements[2]
 
-print neighbours
+#print neighbours
 
+# heartbeat variables
+hbBroadcasts = 0
+hbCount = {}
+
+deleted_nodes = set()
 
 # Declare socket
 udpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -61,12 +67,19 @@ def createLSP():
     h_info = ""
     for i in range(0,len(neighbours)):
         h_info += "," + neighbours[i] + " " + str(cost[neighbours[i]]) + " " + str(port_number[neighbours[i]])
-    header = h_node_id + h_info
+    h_deleted_nodes = ""
+    for del_node in deleted_nodes:
+        h_deleted_nodes += "," + del_node
+    header = h_node_id + h_info + "|" + h_deleted_nodes
     return header
 
 # updates network graph based on received link state packet
 def updateGraph(message):
-    nodes = message.split(",")
+    two_parts = message.split("|")
+    left_nodes = two_parts[0]
+    right_deleted = two_parts[1]
+
+    nodes = left_nodes.split(",")
     from_node = nodes[0]
     for i in range(1, len(nodes)):
         to_node_props = nodes[i].split(" ")
@@ -83,6 +96,10 @@ def updateGraph(message):
             graph[tn_id][from_node] = tn_cost
         else:
             graph[tn_id] = { from_node: tn_cost }
+
+    del_nodes = right_deleted.split(",")
+    for i in range(1, len(del_nodes)):
+        removeNode(del_nodes[i])
 
         #print graph
 
@@ -103,6 +120,54 @@ def flood():
         # print "BROADCAST ===>     [" + message + "] to " + neighbour_node + " at port " + port_number[neighbour_node] + ""
 
 flood()
+
+def broadcastHeartbeat():
+    threading.Timer(1, broadcastHeartbeat).start()
+
+    message = "HB" + " " + node_id
+
+    for i in range(0,len(neighbours)):
+        neighbour_node = neighbours[i]
+        udpSocket.sendto(message,('localhost', int(port_number[neighbour_node])))
+
+    global hbBroadcasts
+    hbBroadcasts += 1
+
+broadcastHeartbeat()
+
+def removeNode(node_to_remove):
+    # print "NEIGHBOURS"
+    # print neighbours
+    deleted_nodes.add(node_to_remove)
+    #num_neighbours -= 1
+    try:
+        print graph
+        del graph[node_to_remove]
+        print "DELETED " + node_to_remove
+        print graph
+    except:
+        return
+
+    for node in graph.keys():
+        if graph[node].has_key(node_to_remove):
+            del graph[node][node_to_remove]
+
+def checkHeartbeat():
+    threading.Timer(2, checkHeartbeat).start()
+    print "CHECKING"
+    print hbBroadcasts
+    print hbCount.keys()
+    for node in hbCount.keys():
+        print node + " " + str(hbCount[node])
+        if hbBroadcasts-hbCount[node] > 3:
+            print "REMOVING " + node
+            neighbours.remove(node)
+            removeNode(node)
+            del hbCount[node]
+            print "HB COUNT: "
+            print hbCount
+
+checkHeartbeat()
 
 def printprint(D, N_dash, prev):
     print "\n"
@@ -210,12 +275,25 @@ while 1:
     message, fromAddress = udpSocket.recvfrom(2048)
     fromIP, fromPort = fromAddress
     #print "RECV ====> [" + message + "] from port " + str(fromPort)
-    updateGraph(message)
-    # pass message on to all neighbour nodes
-    for i in range(0,len(neighbours)):
-        neighbour_node = neighbours[i]
-        if int(port_number[neighbour_node]) == fromPort:
-            continue
+    hb_match = re.match(r'^HB ([\w\d]+)$',message)
+    hb_ack_match = re.match(r'^HB-ACK ([\w\d]+)$',message)
+    if hb_match:
+        from_node = hb_match.group(1)
+        reply = "HB-ACK " + node_id
+        udpSocket.sendto(reply, ('localhost', int(port_number[from_node])))
+    elif hb_ack_match:
+        from_node = hb_ack_match.group(1)
+        if hbCount.has_key(from_node):
+            hbCount[from_node] += 1
         else:
-            udpSocket.sendto(message,('localhost', int(port_number[neighbour_node])))
-            #print "SENT ===>     [" + message + "] to " + neighbour_node + " at port " + port_number[neighbour_node] + ""
+            hbCount[from_node] = hbBroadcasts
+    else:
+        updateGraph(message)
+        # pass message on to all neighbour nodes
+        for i in range(0,len(neighbours)):
+            neighbour_node = neighbours[i]
+            if int(port_number[neighbour_node]) == fromPort:
+                continue
+            else:
+                udpSocket.sendto(message,('localhost', int(port_number[neighbour_node])))
+                #print "SENT ===>     [" + message + "] to " + neighbour_node + " at port " + port_number[neighbour_node] + ""
