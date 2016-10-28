@@ -141,10 +141,10 @@ def removeNode(node_to_remove):
     deleted_nodes.add(node_to_remove)
     #num_neighbours -= 1
     try:
-        print graph
+        # print graph
         del graph[node_to_remove]
-        print "DELETED " + node_to_remove
-        print graph
+        # print "DELETED " + node_to_remove
+        # print graph
     except:
         return
 
@@ -154,18 +154,18 @@ def removeNode(node_to_remove):
 
 def checkHeartbeat():
     threading.Timer(2, checkHeartbeat).start()
-    print "CHECKING"
-    print hbBroadcasts
-    print hbCount.keys()
+    # print "CHECKING"
+    # print hbBroadcasts
+    # print hbCount.keys()
     for node in hbCount.keys():
-        print node + " " + str(hbCount[node])
+        # print node + " " + str(hbCount[node])
         if hbBroadcasts-hbCount[node] > 3:
-            print "REMOVING " + node
+            # print "REMOVING " + node
             neighbours.remove(node)
             removeNode(node)
             del hbCount[node]
-            print "HB COUNT: "
-            print hbCount
+            # print "HB COUNT: "
+            # print hbCount
 
 checkHeartbeat()
 
